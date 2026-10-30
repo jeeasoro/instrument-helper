@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instrument Helper — songs</title>
+<link rel="stylesheet" href="./styles.css">
+<style>
+  table.inv { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.inv th {
+    text-align: left; font-size: 10px; text-transform: uppercase;
+    letter-spacing: 0.07em; color: var(--muted); font-weight: 600;
+    padding: 0 10px 8px 0; border-bottom: 1px solid var(--line);
+  }
+  table.inv td { padding: 7px 10px 7px 0; border-bottom: 1px solid var(--line); }
+  table.inv tr:last-child td { border-bottom: 0; }
+  table.inv .num { text-align: right; font-variant-numeric: tabular-nums; width: 70px; }
+  table.inv th.num { text-align: right; }
+  .inv-wrap { max-height: 420px; overflow-y: auto; }
+
+  .songlist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
+  .song {
+    display: flex; align-items: center; gap: 14px; text-align: left;
+    background: var(--panel-2); border: 1px solid transparent; border-radius: 8px;
+    padding: 11px 14px; cursor: pointer; width: 100%; font: inherit; color: inherit;
+  }
+  .song:hover { border-color: var(--accent); }
+  .song-main { flex: 1; min-width: 0; }
+  .song-title { font-size: 14px; font-weight: 600; }
+  .song-origin { font-size: 11.5px; color: var(--muted); }
+  .song-note { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .song-side { flex: 0 0 auto; text-align: right; min-width: 0; }
+  /* On a phone the title plus stars, badges and buttons will not fit on one
+     line, so the row becomes two rather than pushing the page sideways. */
+  @media (max-width: 460px) {
+    .song { flex-wrap: wrap; }
+    .song-main { flex: 1 0 100%; }
+    .song-side { text-align: left; display: flex; align-items: center;
+                 gap: 8px; flex-wrap: wrap; width: 100%; }
+    .song-tags { margin-top: 0; }
+  }
+  .song-chords {
+    font-size: 12px; color: var(--accent); font-weight: 600;
+    font-variant-numeric: tabular-nums; white-space: nowrap;
+  }
+  .song-level { font-size: 10.5px; color: var(--muted); margin-top: 3px; }
+  .level-dots { letter-spacing: 1px; }
+  .link-danger {
+    background: none; border: 0; color: var(--muted); font-size: 11.5px;
+    padding: 4px 6px; cursor: pointer; border-radius: 5px;
+  }
+  .link-danger:hover { color: var(--bad); background: rgba(248,81,73,0.1); }
+  .mini-heading {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted); margin: 4px 0 6px; font-weight: 600;
+  }
+
+  /* Folder tree beside the song list; stacks on a narrow screen. */
+  .library { display: grid; grid-template-columns: 190px 1fr; gap: 14px; align-items: start; }
+  @media (max-width: 720px) { .library { grid-template-columns: 1fr; } }
+  .folders { display: flex; flex-direction: column; gap: 2px; }
+  .folder {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    background: none; border: 0; border-radius: 6px; padding: 5px 8px;
+    font: inherit; font-size: 12.5px; color: var(--muted); cursor: pointer;
+    text-align: left;
+  }
+  .folder:hover { background: var(--panel-2); color: var(--text); }
+  .folder.active { background: var(--panel-2); color: var(--accent); font-weight: 600; }
+  .folder .n {
+    margin-left: auto; font-size: 10.5px; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .folder .caret { width: 9px; flex: 0 0 auto; opacity: 0.7; }
+
+  .badge {
+    font-size: 10px; padding: 1.5px 6px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+  }
+  .badge.guitar { border-color: #3fb95055; color: #6cc77a; }
+  .badge.piano { border-color: #58a6ff55; color: #7cb8f5; }
+  .song-tags { display: flex; gap: 4px; justify-content: flex-end; margin-top: 4px; }
+  .stars { color: var(--warn); font-size: 11px; letter-spacing: 1px; }
+  .song-folder { font-size: 11px; color: var(--muted); }
+
+  .organiser { margin-top: 12px; border-color: var(--accent); }
+  .check { display: flex; align-items: center; gap: 5px; color: var(--text); }
+  .row-actions { display: flex; gap: 2px; }
+
+  .changes { display: flex; flex-direction: column; gap: 4px; }
+  .change {
+    display: grid; grid-template-columns: 8.5em 1fr auto;
+    align-items: center; gap: 12px;
+    background: var(--panel-2); border-radius: 7px; padding: 7px 12px; font-size: 13px;
+  }
+  .change .names { font-weight: 600; font-variant-numeric: tabular-nums; }
+  .change .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .change .bar i { display: block; height: 100%; background: var(--accent); }
+  .change.hard .bar i { background: var(--warn); }
+  .change .n { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+
+  .chip-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip-grid figure {
+    margin: 0; background: var(--panel-2); border: 1px solid var(--line);
+    border-radius: 9px; padding: 6px 4px 4px;
+  }
+  .chip-grid figcaption {
+    text-align: center; font-size: 10px; color: var(--muted); padding-bottom: 2px;
+  }
+
+  .sheet {
+    font-family: ui-monospace, Consolas, monospace; font-size: 14px;
+    line-height: 1.6; max-height: 520px; overflow-y: auto;
+  }
+  .sheet .row { margin-bottom: 2px; }
+  .sheet .row.blank { height: 14px; }
+  .sheet .row.section {
+    font-family: -apple-system, "Segoe UI", system-ui, sans-serif;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--accent); font-weight: 700; margin: 14px 0 4px;
+  }
+  .sheet .row.section:first-child { margin-top: 0; }
+  .seg { display: inline-block; vertical-align: bottom; white-space: pre-wrap; }
+  .seg .c {
+    display: block; color: var(--accent); font-weight: 700;
+    font-size: 12px; height: 17px; padding-right: 8px;
+  }
+  .seg .t { display: block; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1 data-i18n="songs.title">Songs</h1>
+    <div class="controls" style="margin:0;gap:10px">
+      <label class="field"><span data-i18n="common.instrument">Instrument</span>
+        <select id="instrument">
+          <option value="guitar" data-i18n="common.guitar"></option>
+          <option value="piano" data-i18n="common.piano"></option>
+          <option value="lyre" data-i18n="common.lyre"></option>
+          <option value="kalimba" data-i18n="common.kalimba"></option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="lang.label">Language</span>
+        <select id="lang">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+    </div>
+  </div>
+  <p class="sub" data-i18n="songs.sub"></p>
+
+  <nav class="nav">
+    <a href="./index.html" data-i18n="nav.tuner">Tuner</a>
+    <a href="./songs.html" class="active" data-i18n="nav.songs">Songs</a>
+    <a href="./practice.html" data-i18n="nav.practice">Practice</a>
+    <a href="./learn.html" data-i18n="nav.learn">Getting started</a>
+  </nav>
+
+  <div class="panel">
+    <div class="tabs">
+      <button data-tab="songbook" class="active" data-i18n="songs.tabSongbook"></button>
+      <button data-tab="chords" data-i18n="songs.tabChords"></button>
+      <button data-tab="search" data-i18n="songs.tabSearch"></button>
+      <button data-tab="exercise" data-i18n="songs.tabExercise"></button>
+      <button data-tab="paste" data-i18n="songs.tabPaste"></button>
+    </div>
+
+    <div data-pane="search" hidden>
+      <form id="searchForm" class="controls" style="margin-bottom:12px">
+        <input type="search" id="searchInput" class="grow" data-i18n-placeholder="songs.searchPlaceholder">
+        <button type="submit" data-i18n="songs.search"></button>
+      </form>
+      <div class="results" id="results"></div>
+      <p class="hint" data-i18n="songs.searchHelp"></p>
+    </div>
+
+    <div data-pane="songbook">
+      <div id="mySongsBlock" hidden>
+        <h3 class="mini-heading" data-i18n="songs.mySongs"></h3>
+        <p class="hint" style="margin-top:0" data-i18n="songs.mySongsHelp"></p>
+
+        <div class="controls" style="margin-bottom:10px">
+          <input type="search" id="songFilter" class="grow"
+                 data-i18n-placeholder="songs.filterPlaceholder">
+          <label class="field"><span data-i18n="songs.showFor"></span>
+            <select id="instrumentFilter">
+              <option value="current" data-i18n="songs.forCurrent"></option>
+              <option value="all" data-i18n="songs.forAll"></option>
+              <option value="guitar" data-i18n="common.guitar"></option>
+              <option value="piano" data-i18n="common.piano"></option>
+              <option value="lyre" data-i18n="common.lyre"></option>
+              <option value="kalimba" data-i18n="common.kalimba"></option>
+            </select>
+          </label>
+          <label class="field"><span data-i18n="songs.minDifficulty"></span>
+            <select id="difficultyFilter">
+              <option value="0" data-i18n="songs.anyDifficulty"></option>
+              <option value="1">★</option>
+              <option value="2">★★</option>
+              <option value="3">★★★</option>
+              <option value="4">★★★★</option>
+              <option value="5">★★★★★</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="library">
+          <div class="folders" id="folderTree"></div>
+          <div class="songlist" id="mySongsList"></div>
+        </div>
+        <p class="hint" id="storageNote"></p>
+      </div>
+
+      <!-- Categorising a song: instruments, folder, difficulty. -->
+      <div class="panel organiser" id="organiser" hidden>
+        <h3 class="mini-heading" id="organiserTitle"></h3>
+        <div class="controls" style="margin-bottom:8px">
+          <label class="field"><span data-i18n="songs.songName"></span>
+            <input type="text" id="orgName" class="grow">
+          </label>
+        </div>
+        <div class="controls" style="margin-bottom:8px">
+          <span class="field"><span data-i18n="songs.forInstruments"></span>
+            <label class="check"><input type="checkbox" id="orgGuitar">
+              <span data-i18n="common.guitar"></span></label>
+            <label class="check"><input type="checkbox" id="orgPiano">
+              <span data-i18n="common.piano"></span></label>
+            <label class="check"><input type="checkbox" id="orgLyre">
+              <span data-i18n="common.lyre"></span></label>
+            <label class="check"><input type="checkbox" id="orgKalimba">
+              <span data-i18n="common.kalimba"></span></label>
+          </span>
+          <label class="field"><span data-i18n="songs.difficulty"></span>
+            <select id="orgDifficulty">
+              <option value="0" data-i18n="songs.unrated"></option>
+              <option value="1">★</option>
+              <option value="2">★★</option>
+              <option value="3">★★★</option>
+              <option value="4">★★★★</option>
+              <option value="5">★★★★★</option>
+            </select>
+          </label>
+        </div>
+        <div class="controls" style="margin-bottom:6px">
+          <label class="field grow"><span data-i18n="songs.folder"></span>
+            <input type="text" id="orgFolder" class="grow" list="folderOptions"
+                   data-i18n-placeholder="songs.folderPlaceholder">
+            <datalist id="folderOptions"></datalist>
+          </label>
+          <button id="orgSave" data-i18n="songs.saveChanges"></button>
+          <button class="ghost" id="orgCancel" data-i18n="songs.cancel"></button>
+        </div>
+        <p class="hint" style="margin-top:0" data-i18n="songs.folderHelp"></p>
+        <p class="hint" id="orgError" hidden style="color:var(--bad)"></p>
+      </div>
+      <p class="hint" style="margin-top:0" data-i18n="songs.songbookHelp"></p>
+      <div class="songlist" id="songlist"></div>
+      <h3 class="mini-heading" data-i18n="songs.progressions"></h3>
+      <p class="hint" style="margin-top:0" data-i18n="songs.progressionsHelp"></p>
+      <div class="songlist" id="progressionList"></div>
+    </div>
+
+    <div data-pane="chords" hidden>
+      <textarea id="chordInput" data-i18n-placeholder="songs.chordsPlaceholder"></textarea>
+      <div class="controls" style="margin-top:10px">
+        <button id="parseChords" data-i18n="songs.readChords"></button>
+        <label class="field"><span data-i18n="songs.germanNotation"></span>
+          <select id="germanMode">
+            <option value="auto" data-i18n="songs.germanAuto"></option>
+            <option value="on" data-i18n="songs.germanOn"></option>
+            <option value="off" data-i18n="songs.germanOff"></option>
+          </select>
+        </label>
+      </div>
+      <p class="hint" data-i18n-html="songs.germanHelp"></p>
+      <p class="hint" data-i18n="songs.chordsHelp"></p>
+    </div>
+
+    <div data-pane="exercise" hidden>
+      <div class="controls">
+        <label class="field"><span data-i18n="songs.root"></span> <select id="exRoot"></select></label>
+        <label class="field"><span data-i18n="songs.pattern"></span> <select id="pattern"></select></label>
+        <label class="field"><span data-i18n="songs.octaves"></span>
+          <select id="exOctaves"><option>1</option><option selected>2</option><option>3</option></select>
+        </label>
+        <label class="field"><span data-i18n="songs.startOctave"></span>
+          <select id="exStartOctave"><option>2</option><option selected>3</option><option>4</option></select>
+        </label>
+        <button id="buildExercise" data-i18n="songs.build"></button>
+      </div>
+      <p class="hint" data-i18n="songs.exerciseHelp"></p>
+    </div>
+
+    <div data-pane="paste" hidden>
+      <textarea id="pasteAbc" placeholder="X:1&#10;T:…&#10;M:4/4&#10;L:1/8&#10;K:G&#10;|:GABc d2 e2|dcBA G4:|"></textarea>
+      <div class="controls" style="margin-top:10px">
+        <button id="parsePaste" data-i18n="songs.parse"></button>
+      </div>
+      <p class="hint" data-i18n="songs.pasteHelp"></p>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div id="overview" hidden>
+    <div class="panel">
+      <h2 id="tuneTitle" style="text-transform:none;letter-spacing:-0.02em;color:var(--text);font-size:22px;margin-bottom:4px">—</h2>
+      <div class="tune-meta" id="tuneMeta"></div>
+
+      <div class="controls" style="margin:14px 0 0">
+        <span class="field" id="settingRow" hidden>
+          <span data-i18n="songs.setting"></span> <select id="setting"></select>
+        </span>
+        <label class="field" id="transposeRow">
+          <span data-i18n="songs.transpose"></span>
+          <input type="range" id="transpose" min="-24" max="12" step="1" value="0">
+          <span id="transposeValue"></span>
+        </label>
+        <button class="ghost" id="autoFit" data-i18n="songs.fitNeck"></button>
+        <label class="field" id="capoRow" data-instr="guitar" hidden>
+          <span data-i18n="songs.capo"></span> <select id="capo"></select>
+        </label>
+        <button class="ghost" id="suggestCapoBtn" data-instr="guitar" hidden data-i18n="songs.capoSuggest"></button>
+        <button class="ghost" id="saveSong" hidden data-i18n="songs.save"></button>
+      </div>
+      <p class="hint" id="controlsHint"></p>
+      <div class="credit" id="credit"></div>
+    </div>
+
+    <!-- Chord sections: shown when the source has chords. -->
+    <div class="panel" id="capoPanel" hidden>
+      <h2 data-i18n="songs.handPositions"></h2>
+      <p class="explain" data-i18n-html="songs.handPositionsHelp"></p>
+      <div id="capoAdvice" class="callout-line" data-instr="guitar"></div>
+      <div class="chip-grid" id="chordDiagrams"></div>
+      <div class="legend" data-instr="guitar">
+        <span><i style="background:#3fb950"></i> <span data-i18n="songs.legendOpen"></span></span>
+        <span><i style="background:#58a6ff"></i> <span data-i18n="songs.legendFretted"></span></span>
+        <span>× <span data-i18n="songs.legendMuted"></span></span>
+      </div>
+      <p class="hint" data-instr="piano" data-i18n-html="piano.fingerHelp"></p>
+      <p class="hint" data-instr="piano" data-i18n="songs.capoNotForPiano"></p>
+      <p class="hint" data-instr="lyre kalimba" data-i18n="tines.pluckOrder"></p>
+      <p class="hint" data-instr="lyre kalimba" data-i18n="songs.capoNotHere"></p>
+    </div>
+
+    <div class="panel" id="changesPanel" hidden>
+      <h2 data-i18n="songs.chordChanges"></h2>
+      <p class="explain" data-i18n="songs.chordChangesHelp"></p>
+      <div class="chips" id="chordSequence"></div>
+    </div>
+
+    <div class="panel" id="transitionsPanel" hidden>
+      <h2 data-i18n="songs.transitions"></h2>
+      <p class="explain" data-i18n="songs.transitionsHelp"></p>
+      <div class="changes" id="transitionList"></div>
+
+      <h2 style="margin-top:20px" data-i18n="songs.drill"></h2>
+      <p class="explain" data-i18n="songs.drillHelp"></p>
+      <div class="controls" style="margin-bottom:10px">
+        <label class="field"><span data-i18n="songs.drillRepeats"></span>
+          <select id="drillRepeats">
+            <option>2</option><option selected>4</option><option>6</option><option>8</option>
+          </select>
+        </label>
+        <button class="ghost" id="copyDrill" data-i18n="songs.copy"></button>
+      </div>
+      <textarea id="drillText" readonly rows="8"></textarea>
+    </div>
+
+    <div class="panel" id="sheetPanel" hidden>
+      <h2 data-i18n="songs.sheet"></h2>
+      <p class="explain" data-i18n="songs.sheetHelp"></p>
+      <div class="sheet" id="chordSheet"></div>
+    </div>
+
+    <!-- Melody sections: shown when the source has notes. -->
+    <div class="panel" id="melodyNoticePanel" hidden>
+      <p class="explain" style="margin:0" data-i18n-html="songs.melodyNotice"></p>
+    </div>
+
+    <div class="panel" id="pianoOnlyPanel" hidden>
+      <p class="explain" style="margin:0" data-i18n-html="songs.pianoOnly"></p>
+    </div>
+
+    <!-- Diatonic instruments: whether the song fits at all comes before
+         anything about how to play it. -->
+    <div class="panel" id="tinedNoticePanel" data-instr="lyre kalimba" hidden>
+      <p class="explain" style="margin:0" data-i18n-html="tines.diatonic"></p>
+      <div id="tinedAdvice" class="callout-line" style="margin-top:10px"></div>
+    </div>
+
+    <div class="panel" id="statsPanel" hidden>
+      <h2 data-i18n="songs.glance"></h2>
+      <div class="stats" id="stats"></div>
+    </div>
+
+    <div class="panel" id="tabPanel" hidden>
+      <h2 data-i18n="songs.tablature"></h2>
+      <p class="explain" data-i18n-html="songs.tabHelp"></p>
+      <div class="scroller" id="tabStaff"></div>
+    </div>
+
+    <div class="panel" id="fretboardPanel" hidden>
+      <h2 data-i18n="songs.fretboardTitle"></h2>
+      <p class="explain" data-i18n="songs.fretboardHelp"></p>
+      <div class="controls" data-instr="piano" style="margin-bottom:10px">
+        <label class="field"><span data-i18n="songs.keyboardSize"></span>
+          <select id="keyboardSize">
+            <option value="fit" data-i18n="songs.sizeFit"></option>
+            <option value="medium" data-i18n="songs.sizeMedium"></option>
+            <option value="large" data-i18n="songs.sizeLarge"></option>
+            <option value="xlarge" data-i18n="songs.sizeXLarge"></option>
+          </select>
+        </label>
+        <span class="hint" id="rangeNote" style="margin:0"></span>
+      </div>
+      <div class="scroller" id="fretboard"></div>
+      <div class="legend" data-instr="guitar">
+        <span><i style="background:#3fb950"></i> <span data-i18n="songs.legendOpen"></span></span>
+        <span><i style="background:#58a6ff"></i> <span data-i18n="songs.legendFretted"></span></span>
+        <span data-i18n="songs.legendSize"></span>
+      </div>
+      <div class="legend" data-instr="piano">
+        <span><i style="background:#e6edf3"></i> <span data-i18n="songs.legendOpen"></span></span>
+        <span><i style="background:#12171f;border:1px solid #39424f"></i> <span data-i18n="songs.legendFretted"></span></span>
+        <span data-i18n="songs.legendSize"></span>
+      </div>
+      <div class="legend" data-instr="lyre kalimba">
+        <span><i style="background:#58a6ff"></i> <span data-i18n="songs.legendString"></span></span>
+        <span data-i18n="songs.legendUsed"></span>
+      </div>
+    </div>
+
+    <div class="panel" id="inventoryPanel" hidden>
+      <h2 data-i18n="songs.inventory"></h2>
+      <p class="explain" data-i18n="songs.invHelp"></p>
+      <div class="inv-wrap" id="inventory"></div>
+    </div>
+  </div>
+</div>
+<script type="module" src="./src/songs.js"></script>
+</body>
+</html>

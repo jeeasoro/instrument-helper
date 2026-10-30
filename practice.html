@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instrument Helper — practice</title>
+<link rel="stylesheet" href="./styles.css">
+<style>
+  .stage {
+    display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+    justify-content: center; padding: 10px 0 4px;
+  }
+  .stage .now {
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+    justify-content: center;
+  }
+  /* The chord after this one, dimmed so it reads as preparation, not target. */
+  .up-next {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    justify-content: center; opacity: 0.62;
+    padding-left: 22px; border-left: 1px solid var(--line);
+  }
+  .up-next-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em;
+    color: var(--muted); writing-mode: vertical-rl; transform: rotate(180deg);
+  }
+  .up-next-chord { font-size: 38px; font-weight: 650; letter-spacing: -0.02em; }
+  .fret-list.compact .fret-row { font-size: 11px; padding: 2px 7px; }
+  @media (max-width: 700px) {
+    .up-next { padding-left: 0; border-left: 0; border-top: 1px solid var(--line); padding-top: 16px; }
+    .up-next-label { writing-mode: horizontal-tb; transform: none; }
+  }
+  .current-chord {
+    font-size: 92px; font-weight: 700; line-height: 1;
+    letter-spacing: -0.04em; min-width: 2.2ch; text-align: center;
+  }
+  /* "C3 E4 G4" needs far more room than "Am", so note mode steps the size down
+     rather than letting the label wrap across the whole stage. */
+  .current-chord.notes {
+    font-size: 34px; letter-spacing: -0.01em; min-width: 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .up-next-chord.notes { font-size: 19px; }
+  .next-chords { text-align: center; margin-top: 10px; font-size: 13px; }
+  .next-chords .chip { margin-left: 4px; }
+
+  .context {
+    margin-top: 16px; padding: 12px 14px; border-radius: 9px;
+    background: var(--panel-2); border-left: 3px solid var(--line);
+  }
+  .cline {
+    font-family: ui-monospace, Consolas, monospace; font-size: 14px;
+    line-height: 1.5; overflow-x: auto; white-space: nowrap;
+    padding-bottom: 4px;
+  }
+  .cseg { display: inline-block; vertical-align: bottom; }
+  .cseg .cc {
+    display: block; font-size: 12px; font-weight: 700; height: 17px;
+    color: var(--muted); padding-right: 8px;
+  }
+  .cseg .cc.now {
+    color: var(--accent);
+    /* Boxed so the current chord is unmistakable among several on one line. */
+    background: rgba(88,166,255,0.16); border-radius: 4px; padding: 0 5px;
+  }
+  .cseg .ct { display: block; white-space: pre; }
+  .cseg.now .ct { color: var(--text); }
+  .cline .cseg:not(.now) .ct { color: var(--muted); }
+  .cmeta { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .feedback {
+    margin-top: 18px; padding: 14px 16px; border-radius: 9px;
+    background: var(--panel-2); border-left: 3px solid var(--line);
+    font-size: 15px; min-height: 54px;
+  }
+  .feedback.ok { border-left-color: var(--good); }
+  .feedback.ok b { color: var(--good); }
+  .feedback.bad { border-left-color: var(--bad); }
+  .feedback.bad b { color: var(--bad); }
+  .feedback.warn { border-left-color: var(--warn); }
+  .feedback.warn b { color: var(--warn); }
+  .feedback .muted { font-size: 13px; }
+  .feedback .fix { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+  .progress { height: 6px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+  .progress i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width 200ms; }
+  .progress-row {
+    display: flex; justify-content: space-between; font-size: 11px;
+    color: var(--muted); margin-bottom: 6px;
+  }
+
+  .fret-list { display: flex; flex-direction: column; gap: 3px; min-width: 132px; }
+  .fret-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    font-size: 12px; background: var(--panel-2); border-radius: 5px;
+    padding: 3px 9px;
+  }
+  .fret-row .s { color: var(--muted); }
+  .fret-row b { color: var(--text); font-weight: 600; }
+  .fret-row b.open { color: var(--good); }
+  .fret-row .x { color: var(--muted); }
+
+  .heard {
+    font-size: 30px; font-weight: 700; letter-spacing: -0.02em;
+    line-height: 1.1; min-height: 34px;
+  }
+  .heard.good { color: var(--good); }
+
+  .hear { margin-top: 6px; width: 100%; font-size: 12px; padding: 5px 10px; }
+
+  .match-meter { position: relative; height: 9px; }
+  .match-meter .accept-mark {
+    position: absolute; top: -3px; bottom: -3px; width: 2px;
+    background: var(--text); opacity: 0.55; transform: translateX(-1px);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1 data-i18n="practice.title">Practice</h1>
+    <div class="controls" style="margin:0;gap:10px">
+      <label class="field"><span data-i18n="common.instrument">Instrument</span>
+        <select id="instrument">
+          <option value="guitar" data-i18n="common.guitar"></option>
+          <option value="piano" data-i18n="common.piano"></option>
+          <option value="lyre" data-i18n="common.lyre"></option>
+          <option value="kalimba" data-i18n="common.kalimba"></option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="lang.label">Language</span>
+        <select id="lang">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+    </div>
+  </div>
+  <p class="sub" id="practiceSub" data-i18n="practice.sub"></p>
+
+  <nav class="nav">
+    <a href="./index.html" data-i18n="nav.tuner">Tuner</a>
+    <a href="./songs.html" data-i18n="nav.songs">Songs</a>
+    <a href="./practice.html" class="active" data-i18n="nav.practice">Practice</a>
+    <a href="./learn.html" data-i18n="nav.learn">Getting started</a>
+  </nav>
+
+  <div class="controls">
+    <button id="toggle" data-i18n="practice.start"></button>
+    <label class="field"><span data-i18n="practice.song"></span> <select id="songSelect"></select></label>
+    <button class="ghost" id="restart" data-i18n="practice.restart"></button>
+    <button class="ghost" id="skip" data-i18n="practice.skip"></button>
+    <label class="field"><span data-i18n="practice.mode"></span>
+      <select id="modeSelect">
+        <option value="free" data-i18n="practice.modeFree"></option>
+        <option value="timed" data-i18n="practice.modeTimed"></option>
+      </select>
+    </label>
+    <label class="field" data-instr="piano"><span data-i18n="common.input"></span>
+      <select id="source">
+        <option value="mic" data-i18n="common.inputMic"></option>
+        <option value="midi" data-i18n="common.inputMidi"></option>
+      </select>
+    </label>
+    <label class="field" id="midiDeviceRow" hidden><span data-i18n="common.midiDevice"></span>
+      <select id="midiDevice" disabled></select>
+    </label>
+    <span id="soundControls" class="controls" style="margin:0;gap:12px" hidden>
+      <label class="field"><span data-i18n="synth.voice"></span>
+        <select id="voice"></select>
+      </label>
+      <label class="field"><span data-i18n="synth.volume"></span>
+        <input type="range" id="synthVolume">
+        <span id="synthVolumeValue"></span>
+      </label>
+      <label class="field"><span data-i18n="synth.sustain"></span>
+        <select id="sustain"></select>
+      </label>
+      <button class="ghost" id="playSong" data-i18n="practice.playSong"></button>
+      <label class="field"><span data-i18n="practice.playSpeed"></span>
+        <input type="range" id="playSpeed" min="20" max="360" step="5" value="145">
+        <span id="playSpeedValue"></span>
+      </label>
+    </span>
+  </div>
+  <p class="hint" data-instr="piano" data-i18n="common.inputHelp"></p>
+  <p class="hint" id="soundHint" hidden data-i18n-html="synth.help"></p>
+  <p class="hint" id="playSongHint" hidden data-i18n="practice.playSong.help"></p>
+  <p class="hint" id="sustainHint" hidden data-i18n="synth.sustainHelp"></p>
+
+  <div id="timedControls" hidden>
+    <div class="controls">
+      <label class="field"><span data-i18n="practice.tempo"></span>
+        <input type="range" id="bpm" min="40" max="180" step="1" value="80">
+        <span id="bpmValue">80 BPM</span>
+      </label>
+      <button class="ghost" id="tapTempo" data-i18n="practice.tap"></button>
+      <label class="field"><span data-i18n="practice.beatsSource"></span>
+        <select id="beatsSource">
+          <option value="fixed" data-i18n="practice.beatsFixed"></option>
+          <option value="sheet" data-i18n="practice.beatsFromSheet"></option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="practice.beatsPerChord"></span>
+        <select id="beatsPerChord">
+          <option>1</option><option>2</option><option selected>4</option><option>8</option>
+        </select>
+      </label>
+      <label class="field"><input type="checkbox" id="metronome" checked>
+        <span data-i18n="practice.metronome"></span>
+      </label>
+    </div>
+    <p class="hint" data-i18n="practice.timedHelp"></p>
+    <p class="hint" id="estimateWarning" hidden style="color:var(--warn)"
+       data-i18n="practice.estimateWarning"></p>
+  </div>
+  <div class="status" id="status"></div>
+
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <div class="progress-row">
+          <span data-i18n="practice.playThis"></span><span id="progressText">0 / 0</span>
+        </div>
+        <div class="progress"><i id="progressBar"></i></div>
+
+        <div class="stage">
+          <div class="now">
+            <div class="current-chord" id="currentChord">—</div>
+            <div>
+              <div id="currentDiagram"></div>
+              <button class="ghost hear" id="hearChord"
+                      data-i18n="practice.hearChord"></button>
+            </div>
+            <div class="fret-list" id="fretList"></div>
+          </div>
+
+          <div class="up-next" id="nextPanel" hidden>
+            <div class="up-next-label" data-i18n="practice.next"></div>
+            <div class="up-next-chord" id="nextChord"></div>
+            <div id="nextDiagram"></div>
+            <div class="fret-list compact" id="nextFretList"></div>
+          </div>
+        </div>
+        <div class="next-chords" id="laterChords"></div>
+        <p class="hint" id="fingerHelp" data-instr="piano" data-i18n-html="piano.fingerHelp"></p>
+        <p class="hint" data-instr="lyre kalimba" data-i18n="tines.pluckOrder"></p>
+
+        <div class="context" id="context" hidden></div>
+
+        <div class="feedback" id="feedback"></div>
+      </div>
+
+      <div class="panel">
+        <p class="explain" style="margin:0" data-i18n-html="practice.howItWorks"></p>
+        <p class="hint" id="noteModeNote" hidden data-i18n-html="practice.noteModeHelp"></p>
+        <p class="hint" id="midiHowItWorks" hidden data-i18n="practice.midiHowItWorks"></p>
+        <p class="hint" data-i18n-html="practice.stuckHelp"></p>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2 data-i18n="practice.heardNow"></h2>
+        <div class="heard" id="heardNow">—</div>
+        <div class="midi-row" id="midiStatusRow" hidden style="margin-top:8px">
+          <span class="dot" id="midiDot"></span>
+          <span class="muted" id="midiStatusText"></span>
+          <span class="pedal-flag" id="pedalFlag"></span>
+        </div>
+
+        <div class="meter-label" style="margin-top:14px">
+          <span data-i18n="practice.matchScore"></span><span id="matchValue">—</span>
+        </div>
+        <div class="meter match-meter">
+          <i id="matchBar"></i>
+          <span class="accept-mark" id="acceptMark"></span>
+        </div>
+
+        <div id="micOnly">
+          <div class="meter-label" style="margin-top:12px">
+            <span data-i18n="practice.level"></span><span id="levelValue">—</span>
+          </div>
+          <div class="meter level"><i id="levelBar"></i></div>
+          <div class="clip" id="clipWarning" hidden data-i18n="common.clipping"></div>
+
+          <label class="field" style="margin-top:14px">
+            <span data-i18n="common.micGain"></span>
+            <input type="range" id="gain">
+            <span id="gainValue">0 dB</span>
+          </label>
+          <p class="hint" data-i18n="common.micGainHelp"></p>
+
+          <label class="field" style="margin-top:14px">
+            <span data-i18n="practice.sensitivity"></span>
+            <input type="range" id="sensitivity" min="55" max="92" step="1">
+            <span id="sensitivityValue"></span>
+          </label>
+          <p class="hint" data-i18n="practice.sensitivityHelp"></p>
+        </div>
+        <p class="hint" id="sensitivityMidiNote" hidden data-i18n="practice.sensitivityMidi"></p>
+      </div>
+
+      <div class="panel">
+        <h2 data-i18n="practice.accuracy"></h2>
+        <div class="stats">
+          <div class="stat"><div class="k" data-i18n="practice.accuracy"></div><div class="v" id="accuracy">—</div></div>
+          <div class="stat"><div class="k" data-i18n="practice.attempts"></div><div class="v" id="attempts">0</div></div>
+          <div class="stat" id="timingStat" hidden><div class="k" data-i18n="practice.timing"></div><div class="v" id="timingValue">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 data-i18n="practice.troubleSpots"></h2>
+        <div class="chips" id="troubleSpots"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="./src/practice.js"></script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Instrument Helper — tuner</title>
+<link rel="stylesheet" href="./styles.css">
+<style>
+  .note { display: flex; align-items: baseline; justify-content: center; gap: 4px; }
+  .note-name { font-size: 76px; font-weight: 650; line-height: 1; letter-spacing: -0.03em; }
+  .note-octave { font-size: 28px; color: var(--muted); font-weight: 500; }
+
+  .needle-wrap {
+    position: relative; height: 44px; margin: 18px 0 8px;
+    background: var(--panel-2); border-radius: 8px; overflow: hidden;
+  }
+  .needle-center {
+    position: absolute; left: 50%; top: 0; bottom: 0; width: 2px;
+    background: var(--line); transform: translateX(-1px);
+  }
+  .needle {
+    position: absolute; top: 6px; bottom: 6px; width: 4px;
+    background: var(--warn); border-radius: 2px;
+    transform: translateX(-2px); transition: left 60ms linear, background 120ms;
+  }
+  .needle-wrap.in-tune .needle { background: var(--good); }
+  .needle-scale {
+    position: absolute; inset: auto 0 4px; display: flex;
+    justify-content: space-between; padding: 0 8px;
+    font-size: 10px; color: var(--muted);
+  }
+  .cents { text-align: center; font-size: 20px; font-variant-numeric: tabular-nums; }
+
+  .readout { display: flex; justify-content: space-between; gap: 16px; margin-top: 16px; }
+  .readout div { flex: 1; }
+  .readout .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+  .readout .v { font-size: 15px; font-variant-numeric: tabular-nums; }
+
+  .tuning-table { display: flex; flex-direction: column; gap: 3px; }
+  .tuning-row {
+    display: grid; grid-template-columns: auto 2.6em 1fr auto;
+    align-items: baseline; gap: 10px;
+    padding: 5px 9px; border-radius: 6px;
+    background: var(--panel-2); border: 1px solid transparent;
+    font-size: 12px; transition: border-color 120ms, background 120ms;
+  }
+  .tuning-row.active { border-color: var(--accent); background: #1b2735; }
+  .tuning-row .tn { color: var(--muted); }
+  .tuning-row .tnote { font-size: 15px; font-weight: 700; }
+  .tuning-row.active .tnote { color: var(--accent); }
+  .tuning-row .thz { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .tuning-row .tstate { font-size: 10.5px; color: var(--muted); text-align: right; }
+  .tuning-row .tstate.good { color: var(--good); font-weight: 600; }
+  .tuning-row .tstate.warn { color: var(--warn); font-weight: 600; }
+
+  .tuner-string { font-size: 20px; font-weight: 600; }
+  .tuner-hint { font-size: 13px; color: var(--muted); }
+  .tuner-hint.good { color: var(--good); }
+  .tuner-hint.warn { color: var(--warn); }
+
+  .history {
+    display: flex; gap: 5px; overflow-x: auto; padding-bottom: 4px;
+    scrollbar-width: thin; min-height: 30px;
+  }
+  .hist {
+    flex: 0 0 auto; background: var(--panel-2); border-radius: 5px;
+    padding: 4px 8px; font-size: 12px; font-variant-numeric: tabular-nums;
+  }
+
+  .verdict { font-size: 19px; font-weight: 650; }
+  .verdict.good { color: var(--good); }
+  .verdict.warn { color: var(--warn); }
+  .verdict.bad { color: var(--bad); }
+  .where { font-size: 13px; color: var(--muted); margin-top: 10px; }
+  .where b { color: var(--text); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topbar">
+    <h1 data-i18n="tuner.title">Tuner</h1>
+    <div class="controls" style="margin:0;gap:10px">
+      <label class="field"><span data-i18n="common.instrument">Instrument</span>
+        <select id="instrument">
+          <option value="guitar" data-i18n="common.guitar"></option>
+          <option value="piano" data-i18n="common.piano"></option>
+          <option value="lyre" data-i18n="common.lyre"></option>
+          <option value="kalimba" data-i18n="common.kalimba"></option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="lang.label">Language</span>
+        <select id="lang">
+          <option value="de">Deutsch</option>
+          <option value="en">English</option>
+        </select>
+      </label>
+    </div>
+  </div>
+  <p class="sub" data-i18n="tuner.sub"></p>
+
+  <nav class="nav">
+    <a href="./index.html" class="active" data-i18n="nav.tuner">Tuner</a>
+    <a href="./songs.html" data-i18n="nav.songs">Songs</a>
+    <a href="./practice.html" data-i18n="nav.practice">Practice</a>
+    <a href="./learn.html" data-i18n="nav.learn">Getting started</a>
+  </nav>
+
+  <div class="controls">
+    <button id="toggle" data-i18n="tuner.start"></button>
+    <label class="field" data-instr="piano"><span data-i18n="common.input"></span>
+      <select id="source">
+        <option value="mic" data-i18n="common.inputMic"></option>
+        <option value="midi" data-i18n="common.inputMidi"></option>
+      </select>
+    </label>
+    <span id="micControls" class="controls" style="margin:0;gap:12px">
+      <select id="deviceSelect" disabled><option data-i18n="tuner.devicePlaceholder"></option></select>
+      <label class="field">A4
+        <input type="range" id="a4" min="415" max="466" step="1" value="440">
+        <span id="a4Value">440 Hz</span>
+      </label>
+      <label class="field"><span data-i18n="tuner.mains"></span>
+        <select id="mains">
+          <option value="50" selected>50 Hz</option>
+          <option value="60">60 Hz</option>
+        </select>
+      </label>
+      <label class="field"><span data-i18n="common.micGain"></span>
+        <input type="range" id="gain">
+        <span id="gainValue">0 dB</span>
+      </label>
+    </span>
+    <span id="midiControls" class="controls" style="margin:0;gap:12px" hidden>
+      <label class="field"><span data-i18n="common.midiDevice"></span>
+        <select id="midiDevice" disabled></select>
+      </label>
+      <label class="field"><span data-i18n="synth.voice"></span>
+        <select id="voice"></select>
+      </label>
+      <label class="field"><span data-i18n="synth.volume"></span>
+        <input type="range" id="synthVolume">
+        <span id="synthVolumeValue"></span>
+      </label>
+      <label class="field"><span data-i18n="synth.sustain"></span>
+        <select id="sustain"></select>
+      </label>
+    </span>
+  </div>
+  <p class="hint" data-instr="piano" data-i18n="common.inputHelp"></p>
+  <p class="hint" id="soundHint" hidden data-i18n-html="synth.help"></p>
+  <p class="hint" id="sustainHint" hidden data-i18n="synth.sustainHelp"></p>
+  <p class="hint" id="micGainHint" data-i18n="common.micGainHelp"></p>
+  <p class="hint" id="a4Hint" data-i18n="tuner.a4Help"></p>
+  <div class="status" id="status" style="margin-top:12px"></div>
+
+  <div class="grid">
+    <div>
+      <div class="panel">
+        <h2 data-i18n="tuner.detected"></h2>
+        <div class="note">
+          <span class="note-name" id="noteName">—</span>
+          <span class="note-octave" id="noteOctave"></span>
+        </div>
+        <div id="pitchDetail">
+          <div class="needle-wrap" id="needleWrap">
+            <div class="needle-center"></div>
+            <div class="needle" id="needle" style="left:50%"></div>
+            <div class="needle-scale"><span>-50</span><span>0</span><span>+50</span></div>
+          </div>
+          <div class="cents" id="centsValue">—</div>
+          <div class="readout">
+            <div><div class="k" data-i18n="tuner.measured"></div><div class="v" id="freqValue">—</div></div>
+            <div><div class="k" data-i18n="tuner.target"></div><div class="v" id="targetValue">—</div></div>
+          </div>
+        </div>
+        <div id="midiDetail" hidden>
+          <div class="readout">
+            <div><div class="k" data-i18n="common.velocity"></div><div class="v" id="velocityValue">—</div></div>
+            <div><div class="k" data-i18n="common.keysHeld"></div><div class="v" id="heldValue">—</div></div>
+          </div>
+          <p class="hint" data-i18n="piano.midiPerfect"></p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 data-i18n="tuner.positions"></h2>
+        <p class="explain" data-i18n="tuner.positionsHelp"></p>
+        <div class="chips" id="positions" data-instr="guitar"><span class="muted">—</span></div>
+        <div data-instr="piano">
+          <div class="keyboard fit" id="keyboard"></div>
+          <div class="where" id="keyWhere"></div>
+        </div>
+        <div data-instr="lyre kalimba">
+          <div class="tines" id="tineDiagram"></div>
+          <div class="where" id="tineWhere"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 data-i18n="tuner.sequence"></h2>
+        <div class="history" id="history"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel" data-instr="guitar lyre kalimba">
+        <h2 data-i18n="tuner.standardTuning"></h2>
+        <div class="tuning-table" id="tuningTable"></div>
+        <p class="hint" data-i18n-html="tuner.tuningHelp"></p>
+        <p class="hint" data-instr="lyre kalimba" data-i18n-html="tuner.tuneAll"></p>
+      </div>
+
+      <div class="panel" data-instr="guitar lyre kalimba">
+        <h2 data-i18n="tuner.nearestString"></h2>
+        <div class="tuner-string" id="tunerString">—</div>
+        <div class="tuner-hint" id="tunerHint"></div>
+      </div>
+
+      <div class="panel" data-instr="piano" id="pitchCheckPanel">
+        <h2 data-i18n="piano.pitchCheck"></h2>
+        <p class="explain" data-i18n="piano.pitchCheckHelp"></p>
+        <div class="verdict" id="pitchVerdict">—</div>
+        <div class="tuner-hint" id="pitchDetailLine"></div>
+        <p class="hint" data-i18n-html="piano.stretchWarning"></p>
+      </div>
+
+      <div class="panel" id="signalPanel">
+        <h2 data-i18n="tuner.signal"></h2>
+        <div class="meter-label"><span data-i18n="tuner.level"></span><span id="levelValue">—</span></div>
+        <div class="meter level"><i id="levelBar"></i></div>
+        <div class="clip" id="clipWarning" hidden data-i18n="tuner.clipping"></div>
+        <div class="meter-label" style="margin-top:12px"><span data-i18n="tuner.clarity"></span></div>
+        <div class="meter"><i id="clarityBar"></i></div>
+        <p class="hint" data-i18n="tuner.clarityHelp"></p>
+        <div class="diag-row" style="margin-top:10px">
+          <span class="diag-key" data-i18n="tuner.raw"></span>
+          <span class="diag-value" id="rawValue">—</span>
+        </div>
+        <p class="hint" data-i18n="tuner.rawHelp"></p>
+      </div>
+
+      <div class="panel" id="diagnosticsPanel">
+        <h2 data-i18n="tuner.diagnostics"></h2>
+        <div id="diagnostics"><span class="muted">—</span></div>
+      </div>
+
+      <div class="panel" id="midiPanel" hidden>
+        <h2 data-i18n="common.midiDetails"></h2>
+        <div id="midiDiagnostics"><span class="muted">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module" src="./src/app.js"></script>
+</body>
+</html>

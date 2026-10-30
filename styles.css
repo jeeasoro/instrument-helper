@@ -1,0 +1,266 @@
+:root {
+  --bg: #0e1116;
+  --panel: #161b23;
+  --panel-2: #1d232d;
+  --line: #2a323e;
+  --text: #e6edf3;
+  --muted: #8b98a9;
+  --good: #3fb950;
+  --warn: #d29922;
+  --bad: #f85149;
+  --accent: #58a6ff;
+}
+
+* { box-sizing: border-box; }
+
+/* The UA's `[hidden] { display: none }` sits at the same specificity as any
+   author rule and loses to it, so every component that gives itself a `display`
+   — .controls, .field, .up-next, .midi-row — stayed visible when script set
+   `hidden = true`. Settle it once, here. */
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 -apple-system, "Segoe UI", system-ui, sans-serif;
+  /* German compounds — "Übereinstimmung", "Rausch-Unterdrückung" — are longer
+     than a 320 px phone's content column, and an unbreakable word paints
+     outside its box without widening it, scrolling the whole page sideways. */
+  overflow-wrap: break-word;
+}
+
+.wrap { max-width: 980px; margin: 0 auto; }
+h1 { font-size: 18px; margin: 0 0 2px; letter-spacing: -0.01em; }
+.topbar {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 16px; flex-wrap: wrap;
+}
+.topbar .field { flex: 0 0 auto; }
+
+/* Short explanation under a panel heading — the page assumes no background. */
+.explain {
+  font-size: 12.5px; color: var(--muted); margin: -6px 0 14px; max-width: 68ch;
+}
+.explain b { color: var(--text); font-weight: 650; }
+.hint { font-size: 12px; color: var(--muted); margin: 8px 0 0; max-width: 68ch; }
+.sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+a { color: var(--accent); }
+
+/* Navigation ------------------------------------------------------------- */
+.nav { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.nav a {
+  padding: 7px 14px; border-radius: 7px; font-size: 13px;
+  text-decoration: none; color: var(--muted); border: 1px solid transparent;
+}
+.nav a:hover { color: var(--text); }
+.nav a.active {
+  background: var(--panel); color: var(--text); border-color: var(--line);
+}
+
+/* Controls --------------------------------------------------------------- */
+.controls {
+  display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px;
+  /* Several pages nest a .controls group inside another one. A flex item sizes
+     to its content by default, so without these the inner group ignores the
+     page width and every percentage inside it resolves against the wrong box. */
+  max-width: 100%; min-width: 0;
+}
+button {
+  background: var(--accent); color: #04121f; border: 0; border-radius: 7px;
+  padding: 9px 18px; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+button:disabled { opacity: 0.45; cursor: default; }
+button.running { background: var(--bad); color: #fff; }
+button.ghost {
+  background: var(--panel-2); color: var(--text); border: 1px solid var(--line);
+  font-weight: 500; padding: 8px 14px; font-size: 13px;
+}
+button.ghost.on { background: var(--accent); color: #04121f; border-color: transparent; }
+
+select, input[type=text], input[type=search], textarea {
+  background: var(--panel-2); color: var(--text);
+  border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px;
+  font-size: 13px; font-family: inherit;
+}
+/* Capped so a long song title cannot stretch a row, but never wider than the
+   space available. `min-width: 0` is the half that actually matters: a flex
+   item defaults to its content's minimum width, so a <select> holding a long
+   option refuses to shrink and pushes the page sideways on a phone. */
+select { max-width: min(340px, 100%); min-width: 0; }
+input[type=range] {
+  background: var(--panel-2); border: 1px solid var(--line);
+  border-radius: 7px; padding: 0; width: 120px;
+}
+textarea { width: 100%; min-height: 130px; resize: vertical; font-family: ui-monospace, Consolas, monospace; }
+/* `min-width: 0` lets the control inside actually shrink: a flex item defaults
+   to its content's minimum width, so without it a wide <select> pushes the
+   whole row — and the page — past the viewport on a phone. */
+.field {
+  display: flex; align-items: center; gap: 8px; font-size: 13px;
+  color: var(--muted); max-width: 100%; min-width: 0; flex-wrap: wrap;
+}
+.field > input { min-width: 0; }
+.grow { flex: 1; min-width: 200px; }
+
+.status { font-size: 13px; color: var(--muted); margin-bottom: 16px; min-height: 20px; }
+.status.good { color: var(--good); }
+.status.bad { color: var(--bad); }
+.status.busy { color: var(--accent); }
+
+/* Panels ----------------------------------------------------------------- */
+.panel {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 18px;
+}
+.panel + .panel { margin-top: 16px; }
+.panel h2 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.09em;
+  color: var(--muted); margin: 0 0 14px; font-weight: 600;
+}
+.grid { display: grid; grid-template-columns: 1fr 300px; gap: 16px; }
+@media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+
+/* Chips, meters, tables -------------------------------------------------- */
+.chips { display: flex; flex-wrap: wrap; gap: 7px; min-height: 30px; }
+.chip {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 5px 10px; font-size: 12px; color: var(--muted);
+}
+.chip b { color: var(--text); font-weight: 600; }
+
+.meter { height: 7px; background: var(--panel-2); border-radius: 4px; overflow: hidden; margin: 6px 0 2px; }
+.meter i { display: block; height: 100%; width: 0%; background: var(--accent); transition: width 60ms linear; }
+.meter.level i { background: linear-gradient(90deg, var(--good) 0 65%, var(--warn) 82%, var(--bad) 100%); }
+.meter-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+
+.diag-row {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 5px 0; border-bottom: 1px solid var(--line); font-size: 12px;
+}
+.diag-row:last-child { border-bottom: 0; }
+.diag-key { color: var(--muted); }
+.diag-value { text-align: right; word-break: break-word; }
+.diag-value.good { color: var(--good); }
+.diag-value.bad { color: var(--bad); font-weight: 600; }
+
+.muted { color: var(--muted); font-size: 12px; }
+.clip { color: var(--bad); font-size: 12px; font-weight: 600; }
+
+/* Stat grid -------------------------------------------------------------- */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 10px; }
+.stat { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; }
+.stat .k { font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); }
+.stat .v { font-size: 17px; font-variant-numeric: tabular-nums; margin-top: 2px; }
+.stat .v small { font-size: 12px; color: var(--muted); font-variant-numeric: normal; }
+
+/* Source tabs ------------------------------------------------------------ */
+.tabs {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+.tabs button {
+  background: none; color: var(--muted); border: 0; border-bottom: 2px solid transparent;
+  border-radius: 0; padding: 8px 14px; font-size: 13px; font-weight: 500;
+}
+.tabs button.active { color: var(--text); border-bottom-color: var(--accent); }
+
+/* Search results --------------------------------------------------------- */
+.results { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.result {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  background: var(--panel-2); border: 1px solid transparent; border-radius: 7px;
+  padding: 9px 12px; cursor: pointer; font-size: 13px;
+}
+.result:hover { border-color: var(--accent); }
+.result .type { color: var(--muted); font-size: 12px; text-transform: capitalize; }
+
+/* Tab staff and fretboard ------------------------------------------------ */
+.scroller { overflow-x: auto; padding-bottom: 6px; }
+.scroller svg { display: block; }
+
+.credit { font-size: 12px; color: var(--muted); margin-top: 12px; }
+.tune-title { font-size: 22px; font-weight: 650; letter-spacing: -0.02em; margin: 0 0 4px; }
+.tune-meta { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted); margin-top: 10px; }
+.legend span { display: flex; align-items: center; gap: 5px; }
+.legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+/* Instrument ------------------------------------------------------------- */
+/* Panels belonging to the other instruments are removed by the stylesheet, so
+   no script has to track which of them exist on which page.
+
+   Written as "hide anything that does not claim the current instrument" rather
+   than as a pair per combination: with four instruments the old form would have
+   been twelve rules, and adding a fifth would have meant editing every one.
+   `data-instr` takes a space-separated list, so a panel shared by the lyre and
+   the kalimba is `data-instr="lyre kalimba"`. */
+html[data-instrument="guitar"]  [data-instr]:not([data-instr~="guitar"]),
+html[data-instrument="piano"]   [data-instr]:not([data-instr~="piano"]),
+html[data-instrument="lyre"]    [data-instr]:not([data-instr~="lyre"]),
+html[data-instrument="kalimba"] [data-instr]:not([data-instr~="kalimba"]) { display: none; }
+
+.keyboard { overflow-x: auto; padding-bottom: 4px; }
+.keyboard svg { display: block; max-width: 100%; height: auto; }
+.keyboard.fit svg { width: 100%; }
+
+/* Note names of a chord, alongside its keyboard diagram. */
+.note-list { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.note-pill {
+  background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px;
+  padding: 4px 9px; font-size: 12px; display: flex; align-items: baseline; gap: 5px;
+}
+.note-pill b { font-size: 13px; font-weight: 650; }
+.note-pill .fg { color: var(--muted); font-size: 10px; }
+.note-pill.bass { border-color: #8957e5; }
+.note-pill.bass b { color: #b083f0; }
+/* A note the selected instrument cannot reach at all. */
+.note-pill.off { border-color: var(--warn); opacity: 0.75; }
+.note-pill.off b { color: var(--warn); }
+
+/* MIDI status line, on both the tuner and the practice page. */
+.midi-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.dot {
+  width: 8px; height: 8px; border-radius: 50%; display: inline-block;
+  background: var(--muted); flex: 0 0 auto;
+}
+.dot.live { background: var(--good); }
+.dot.off { background: var(--bad); }
+.pedal-flag { font-size: 11px; color: var(--muted); }
+.pedal-flag.down { color: var(--accent); font-weight: 600; }
+
+/* Lyre and kalimba ------------------------------------------------------- */
+/* Both are drawn by src/tines.js as one wide SVG of strings or tines. The
+   drawing scales to the panel, so the only thing needed here is somewhere for
+   the "this chord is not on the instrument" line to live under it. */
+.tines { overflow-x: auto; padding-bottom: 4px; }
+.tines svg { display: block; max-width: 100%; height: auto; }
+.tine-missing {
+  font-size: 11px; color: var(--warn); text-align: center;
+  margin-top: 4px; line-height: 1.35;
+}
+
+/* Sixteen or seventeen tuning rows do not want to be one tall column the way
+   six do — in the 300 px sidebar that is a 600 px scroll — so the table becomes
+   a grid once there are more than a handful. The target frequency goes with it:
+   it is what makes a row too wide to pair up, and the note name is the thing
+   you actually tune to. The main readout still shows the exact target in Hz. */
+.tuning-table.wide {
+  display: grid; gap: 4px;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+}
+.tuning-table.wide .tuning-row {
+  grid-template-columns: auto 1fr; gap: 2px 6px; padding: 5px 7px;
+}
+/* Neither the target frequency nor the too-high/too-low verdict is shown here.
+   Both were tried and both make the row taller or wider than a two-column grid
+   can hold — and the verdict in particular would move the highlighted row's
+   height sixteen times per tuning pass, shifting every row below it while you
+   are turning a pin. The "Closest string" panel underneath carries the verdict
+   in a line you can read from arm's length, which is where you want it while
+   your hands are busy. This table's job is to say which strings exist and which
+   one you are on. */
+.tuning-table.wide .tuning-row .thz,
+.tuning-table.wide .tuning-row .tstate { display: none; }
